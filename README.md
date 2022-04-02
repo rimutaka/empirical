@@ -4,7 +4,7 @@
 
 [`lazy_static`](https://crates.io/crates/lazy_static) is one of the foundational crates in the Rust ecosystem.
 It lets us use static variables without an explicit initialization call.
-I used it many times without giving its performance implications much thought. Putting it inside some deeply nested loop got me worried if all that lazy-static magic comes at some hidden cost.
+I used it many times without giving its performance implications much thought. Putting it inside some deeply nested loop got me worried if all that lazy-static magic has some hidden cost.
 
 The [crate's docs](https://docs.rs/lazy_static/latest/lazy_static/index.html) explain the mechanics behind `lazy_static!` macro as:
 
@@ -16,7 +16,7 @@ That sounds innocuous enough, but I still have questions:
 2. If `lazy_static` is used in a sub-module, will it be re-initialized on every call to a function from that module?
 3. Is it any slower than initializing a variable manually and passing it to other functions as a parameter?
 
-Without understanding the implementation details of `lazy_static`, I figured it would be easier to benchmark it than digging through the [source code](https://github.com/rust-lang-nursery/lazy-static.rs).
+Without understanding the implementation details of `lazy_static` I figured it would be easier to benchmark it than to dig through its [source code](https://github.com/rust-lang-nursery/lazy-static.rs).
 
 
 ## How to run
@@ -42,9 +42,8 @@ The results looked pretty neat. The only outlier was a piece of bad code I put i
 
 #### __TL;DR:__ `lazy_static!` is as fast as it gets. Keep on using it.
 
-## Explanation
 
-
+## Benchmarks in detail
 
 ### `bad_rust_local()`
 
@@ -82,7 +81,7 @@ These benches relied on `lazy_static` with the only difference in where it was d
   * __lazy_static_local:__ at the root level
   * __lazy_static_inner:__ at a sub-module level (same file)
   * __lazy_static_external_mod:__ at a module placed in a separate file
-  * __lazy_static_backref:__ at the root level
+  * __lazy_static_backref:__ at the root level, used in a sub-module
 
 The `lazy_static` declarations were identical in all cases:
 
@@ -92,7 +91,7 @@ lazy_static! {
 }
 ```
 
-The place of `lazy_static! { ... }` declaration made no difference:
+The placement of `lazy_static! { ... }` declaration made no difference:
 1. The static variable was initialized once only
 2. All these benches took ~27 ns/iter each.
 
@@ -104,7 +103,7 @@ It is possible to initialize the static variable before or after its first use b
 lazy_static::initialize(&STATIC_VAR_NAME);
 ```
 
-There was no additional performance cost for calling this functions for the first time or any number of times after that.
+There was no additional performance cost for calling `initialize` for the first time or any number of times after that.
 This is inline with the documentation that states:
 
 > Takes a shared reference to a lazy static and initializes it if it has not been already.
@@ -133,7 +132,9 @@ const fn static_regex() -> regex::Regex {
 
 # `lazy_static` in depth
 
-The source code in this project is split into several parts:
+##### This section goes deep into the source code of `lazy_static` to really understand how it works. 
+
+The demo code in this project is split into several parts:
 
 * __benches__: the source for the benchmarks in this post 
 * __examples/expansion_base.rs__: a minimal implementation to get expanded code from `lazy_static!` macro
@@ -196,9 +197,8 @@ fn main() {
 ```
 
 The snippet above depends on some functions provided by `lazy_static` and that's where most of the magic happens.
-I distilled it to a simpler version that does not have `lazy_static` as a dependency at all. 
 
-Skim through this snippet (explanations follow after): 
+I distilled it to a simpler version that does not have `lazy_static` as a dependency at all. Skim through it and go to the explanations that follow: 
 
 ```rust
 struct Lazy<T: Sync>(Cell<Option<T>>, Once);
@@ -233,14 +233,14 @@ impl Deref for CompiledRegex {
 }
 ```
 
-If the above code is still a bit confusing, look up [src/main.rs](src/main.rs) for the full version with detailed comments.
-
 There are a few key features in the last snippet to pay attention to:
 
 1. `struct Lazy` holds generic `struct CompiledRegex` that is instantiated as `static COMPILED_REGEX` that actually holds the compiled regex.
 2. That long chain is unravelled inside `impl Deref for CompiledRegex` to give us the compiled regex as a static variable
 3. `std::sync::Once::call_once()` is used to initialize the regex once only
 4. `match *LAZY.0.as_ptr()` gets us the initialized regex from deep inside the chain of structs
+
+If the above code is still a bit confusing, look up [src/main.rs](src/main.rs) for the full version with detailed comments.
 
 Running the program with `cargo run` will execute this demo code from [src/main.rs](src/main.rs) using the snippet above for the _lazy-static_ part:
 
