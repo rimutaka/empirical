@@ -112,7 +112,7 @@ This is inline with the documentation that states:
 
 ### `once_cell`
 
-[`once_cell`](https://docs.rs/once_cell/latest/once_cell/) is just as elegant as `lazy_static!` and is [claimed to be faster](https://github.com/async-rs/async-std/issues/406#issuecomment-547286625). It performed on the par with `lazy_static!` in my basic tests.
+[`once_cell`](https://docs.rs/once_cell/latest/once_cell/) is just as elegant as `lazy_static!` and is about 20% faster in a [32-thread test](https://github.com/matklad/once_cell/blob/master/examples/bench_vs_lazy_static.rs). It performed on the par with `lazy_static!` in my basic benchmark.
 
 The static declaration is a single line of code:
 
