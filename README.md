@@ -21,6 +21,7 @@ Without understanding the implementation details of `lazy_static` I figured it w
 
 ## How to run
 
+* grab project's source: `git clone https://github.com/rimutaka/empirical.git`
 * benchmarks: `cargo +nightly bench`
 * tests: `cargo +nightly test --benches`
 
