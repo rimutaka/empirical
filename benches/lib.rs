@@ -16,6 +16,9 @@ lazy_static! {
     pub(crate) static ref COMPILED_REGEX: regex::Regex = regex::Regex::new(LONG_REGEX).unwrap();
 }
 
+static COMPILED_REGEX_ONCE_CELL: once_cell::sync::Lazy<regex::Regex> =
+    once_cell::sync::Lazy::new(|| regex::Regex::new(LONG_REGEX).unwrap());
+
 /// The regex is compiled within lazy_static at the module level
 #[bench]
 fn lazy_static_local(b: &mut Bencher) {
@@ -45,6 +48,21 @@ fn vanilla_rust_local(b: &mut Bencher) {
 fn vanilla_rust_local_test() {
     let compiled_regex = regex::Regex::new(LONG_REGEX).unwrap();
     let is_match = compiled_regex.is_match(TEST_EMAIL);
+    assert!(is_match);
+}
+
+/// The regex is compiled once by once_cell::sync::Lazy on the first use within the loop
+#[bench]
+fn once_cell_lazy(b: &mut Bencher) {
+    b.iter(|| {
+        let is_match = COMPILED_REGEX_ONCE_CELL.is_match(TEST_EMAIL);
+        test::black_box(is_match);
+    });
+}
+
+#[test]
+fn once_cell_lazy_test() {
+    let is_match = COMPILED_REGEX_ONCE_CELL.is_match(TEST_EMAIL);
     assert!(is_match);
 }
 

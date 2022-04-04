@@ -36,11 +36,12 @@ test lazy_static_external_mod ... bench:          27 ns/iter (+/- 0)
 test lazy_static_inner        ... bench:          27 ns/iter (+/- 1)
 test lazy_static_local        ... bench:          27 ns/iter (+/- 5)
 test lazy_static_reinit       ... bench:          26 ns/iter (+/- 1)
+test once_cell_lazy           ... bench:          26 ns/iter (+/- 2)
 test vanilla_rust_local       ... bench:          27 ns/iter (+/- 0)
 ```
 The results looked pretty neat. The only outlier was a piece of bad code I put in the benches intentionally to set the baseline.
 
-#### __TL;DR:__ `lazy_static!` is as fast as it gets. Keep on using it.
+#### __TL;DR:__ `lazy_static!` is fine, but [`once_cell`](https://docs.rs/once_cell/latest/once_cell/) may be better for new projects.
 
 
 ## Benchmarks in detail
@@ -107,6 +108,28 @@ There was no additional performance cost for calling `initialize` for the first 
 This is inline with the documentation that states:
 
 > Takes a shared reference to a lazy static and initializes it if it has not been already.
+
+### `once_cell`
+
+[`once_cell`](https://docs.rs/once_cell/latest/once_cell/) is just as elegant as `lazy_static!` and is [claimed to be faster](https://github.com/async-rs/async-std/issues/406#issuecomment-547286625). It performed on the par with `lazy_static!` in my basic tests.
+
+The static declaration is a single line of code:
+
+```rust
+static COMPILED_REGEX_ONCE_CELL: once_cell::sync::Lazy<regex::Regex> =
+    once_cell::sync::Lazy::new(|| regex::Regex::new(LONG_REGEX).unwrap());
+```
+
+and the usage of the static variable is exactly the same as with `lazy_static!`:
+
+```rust
+    b.iter(|| {
+        let is_match = COMPILED_REGEX_ONCE_CELL.is_match(TEST_EMAIL);
+        test::black_box(is_match);
+    });
+```
+
+There is an [RFC to merge `once_cell` into `std::lazy`](https://github.com/rust-lang/rust/issues/74465) making it part of the standard library. It may be a more future-proof choice if you are starting a new project.
 
 
 ## `lazy_static` alternatives that DO NOT work
